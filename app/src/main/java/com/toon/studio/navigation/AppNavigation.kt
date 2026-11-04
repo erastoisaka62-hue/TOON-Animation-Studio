@@ -20,7 +20,13 @@ import kotlinx.coroutines.launch
 
 private val allRoutes: List<String> =
     (drawerItems.map { it.route } +
-        listOf(Routes.STUDIO, Routes.ACCOUNT, Routes.SEARCH, Routes.NOTIFICATIONS))
+        listOf(
+            Routes.STUDIO,
+            Routes.ACCOUNT,
+            Routes.SEARCH,
+            Routes.NOTIFICATIONS,
+            Routes.SETTINGS
+        ))
         .distinct()
 
 @Composable
