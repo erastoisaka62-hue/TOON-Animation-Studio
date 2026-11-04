@@ -1,7 +1,12 @@
+
 package com.toon.studio.shots
 
 /** How well the 2D renderer can really show a feature. */
-enum class Support2D { REAL, APPROXIMATE, NOT_AVAILABLE }
+enum class Support2D {
+    REAL,
+    APPROXIMATE,
+    NOT_AVAILABLE
+}
 
 enum class ShotType(val command: String, val support2D: Support2D) {
     EXTREME_WIDE("EXTREME_WIDE", Support2D.REAL),
@@ -22,7 +27,11 @@ enum class ShotType(val command: String, val support2D: Support2D) {
 
     companion object {
         fun fromCommand(text: String): ShotType? {
-            val key = text.trim().uppercase().replace(' ', '_').replace('-', '_')
+            val key = text.trim()
+                .uppercase()
+                .replace(' ', '_')
+                .replace('-', '_')
+
             return values().firstOrNull { it.command == key }
         }
     }
@@ -48,7 +57,11 @@ enum class CameraMovement(val command: String, val support2D: Support2D) {
 
     companion object {
         fun fromCommand(text: String): CameraMovement? {
-            val key = text.trim().uppercase().replace(' ', '_').replace('-', '_')
+            val key = text.trim()
+                .uppercase()
+                .replace(' ', '_')
+                .replace('-', '_')
+
             val alias = when (key) {
                 "DESCEND" -> "AERIAL_DESCEND"
                 "RISE" -> "AERIAL_RISE"
@@ -56,16 +69,33 @@ enum class CameraMovement(val command: String, val support2D: Support2D) {
                 "TILT" -> "TILT_UP"
                 else -> key
             }
+
             return values().firstOrNull { it.command == alias }
         }
     }
 }
 
-enum class CameraAngle { EYE_LEVEL, LOW, HIGH, TOP_DOWN }
+enum class CameraAngle {
+    EYE_LEVEL,
+    LOW,
+    HIGH,
+    TOP_DOWN
+}
 
-enum class Transition { CUT, DISSOLVE, FADE_BLACK }
+enum class Transition {
+    CUT,
+    DISSOLVE,
+    FADE_BLACK
+}
 
-enum class ActionType { IDLE, WALK, RUN, JUMP, LOOK, SURPRISED }
+enum class ActionType {
+    IDLE,
+    WALK,
+    RUN,
+    JUMP,
+    LOOK,
+    SURPRISED
+}
 
 data class EnvironmentVisibility(
     val background: Boolean = true,
@@ -102,7 +132,8 @@ data class SceneLocation(
     val areas: List<LocationArea>,
     val worldWidth: Float
 ) {
-    fun area(areaId: String): LocationArea? = areas.firstOrNull { it.id == areaId }
+    fun area(areaId: String): LocationArea? =
+        areas.firstOrNull { it.id == areaId }
 }
 
 data class Shot(
@@ -120,7 +151,8 @@ data class Shot(
     val transition: Transition = Transition.DISSOLVE,
     val transitionDuration: Float = 0.4f
 ) {
-    val end: Float get() = start + duration
+    val end: Float
+        get() = start + duration
 }
 
 data class ShotScene(
@@ -131,115 +163,101 @@ data class ShotScene(
     val actions: List<CharacterAction> = emptyList(),
     val dialogue: List<DialogueLine> = emptyList()
 ) {
-    val duration: Float get() = shots.maxOfOrNull { it.end } ?: 0f
+    val duration: Float
+        get() = shots.maxOfOrNull { it.end } ?: 0f
 
-    /** The shot that is active at time t (seconds). Shots are played in start order. */
+    /** The shot that is active at time t (seconds). */
     fun shotAt(t: Float): Shot? {
         var found: Shot? = null
-        for (s in shots.sortedBy { it.start }) {
-            if (s.start <= t) found = s
+
+        for (shot in shots.sortedBy { it.start }) {
+            if (shot.start <= t) {
+                found = shot
+            }
         }
+
         return found ?: shots.minByOrNull { it.start }
     }
 }
 
 /** Checks a scene and returns readable messages starting with ERROR or WARNING. */
 object ShotSceneValidator {
+
     fun validate(scene: ShotScene): List<String> {
         val out = ArrayList<String>()
+
         if (scene.shots.isEmpty()) {
             out.add("ERROR: scene has no shots")
             return out
         }
+
         val ordered = scene.shots.sortedBy { it.start }
         val areaIds = scene.location.areas.map { it.id }
 
         for (i in ordered.indices) {
-            val s = ordered[i]
-            if (s.duration <= 0f) {
-                out.add("ERROR: " + s.id + ": duration must be greater than 0")
+            val shot = ordered[i]
+
+            if (shot.duration <= 0f) {
+                out.add(
+                    "ERROR: ${shot.id}: duration must be greater than 0"
+                )
             }
-            if (s.areaId.isNotEmpty() && !areaIds.contains(s.areaId)) {
-                out.add("ERROR: " + s.id + ": unknown area " + s.areaId)
+
+            if (shot.areaId.isNotEmpty() && !areaIds.contains(shot.areaId)) {
+                out.add(
+                    "ERROR: ${shot.id}: unknown area ${shot.areaId}"
+                )
             }
-            if (s.type.support2D == Support2D.NOT_AVAILABLE) {
-                out.add("WARNING: " + s.id + ": shot type " + s.type.command + " needs 3D")
+
+            if (shot.type.support2D == Support2D.NOT_AVAILABLE) {
+                out.add(
+                    "WARNING: ${shot.id}: shot type ${shot.type.command} needs 3D"
+                )
             }
-            if (s.movement.support2D == Support2D.NOT_AVAILABLE) {
-                out.add("WARNING: " + s.id + ": movement " + s.movement.command + " needs 3D")
+
+            if (shot.movement.support2D == Support2D.NOT_AVAILABLE) {
+                out.add(
+                    "WARNING: ${shot.id}: movement ${shot.movement.command} needs 3D"
+                )
             }
+
             if (i > 0) {
-                val prev = ordered[i - 1]
-                if (s.start < prev.end - 0.001f) {
-                    out.add("ERROR: " + s.id + " overlaps " + prev.id)
-                } else if (s.start > prev.end + 0.001f) {
-                    out.add("WARNING: gap between " + prev.id + " and " + s.id)
+                val previous = ordered[i - 1]
+
+                if (shot.start < previous.end - 0.001f) {
+                    out.add(
+                        "ERROR: ${shot.id} overlaps ${previous.id}"
+                    )
+                } else if (shot.start > previous.end + 0.001f) {
+                    out.add(
+                        "WARNING: gap between ${previous.id} and ${shot.id}"
+                    )
                 }
-                if (prev.areaId.isNotEmpty() && s.areaId.isNotEmpty() &&
-                    prev.areaId != s.areaId && s.transition == Transition.CUT
+
+                if (
+                    previous.areaId.isNotEmpty() &&
+                    shot.areaId.isNotEmpty() &&
+                    previous.areaId != shot.areaId &&
+                    shot.transition == Transition.CUT
                 ) {
-                    val a = areaIds.indexOf(prev.areaId)
-                    val b = areaIds.indexOf(s.areaId)
-                    if (a >= 0 && b >= 0 && Math.abs(a - b) > 1) {
+                    val previousIndex = areaIds.indexOf(previous.areaId)
+                    val currentIndex = areaIds.indexOf(shot.areaId)
+
+                    if (
+                        previousIndex >= 0 &&
+                        currentIndex >= 0 &&
+                        kotlin.math.abs(previousIndex - currentIndex) > 1
+                    ) {
                         out.add(
-                            "WARNING: " + s.id + ": jumps from " + prev.areaId +
-                                " to " + s.areaId + " without a transition"
+                            "WARNING: ${shot.id}: jumps from " +
+                                "${previous.areaId} to ${shot.areaId} " +
+                                "without a transition"
                         )
                     }
                 }
             }
         }
-        return out
-                       Text("Ripoti ya Run: ${report.executedCount} zimetekelezwa.")
-            }
-        }
-    }
-}
 
-@Composable
-private fun SceneBreakdown(
-    plan: SharedScenePlan,
-    selected: Int,
-    onSelect: (Int) -> Unit
-) {
-    val count = plan.sceneCount.toInt()
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                "Scene Breakdown",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            if (count <= 0) {
-                Text("Hakuna scenes kwenye Scene Plan.")
-                return@Column
-            }
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                for (i in 0 until count) {
-                    if (i == selected) {
-                        Button(onClick = { onSelect(i) }) { Text("Scene ${i + 1}") }
-                    } else {
-                        OutlinedButton(onClick = { onSelect(i) }) { Text("Scene ${i + 1}") }
-                    }
-                }
-            }
-            Text(
-                "Scene ${selected + 1} kati ya $count",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                "Muda makadirio wa mradi: sekunde ${sec(plan.estimatedDurationSec)} " +
-                    "(${mmss(plan.estimatedDurationSec)})",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-} 
+        return out
     }
 }
