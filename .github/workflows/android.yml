@@ -57,6 +57,12 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk toon-latest.apk
           cp app/build/outputs/apk/debug/app-debug.apk toon-build-${{ github.run_number }}.apk
 
+      - name: Upload APK to this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: mr-p-apk-build-${{ github.run_number }}
+          path: toon-build-${{ github.run_number }}.apk
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
