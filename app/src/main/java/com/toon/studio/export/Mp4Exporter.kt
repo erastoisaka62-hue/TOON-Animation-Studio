@@ -50,28 +50,24 @@ object Mp4Exporter {
             if (endOfStream) encoder.signalEndOfInputStream()
             while (true) {
                 val index = encoder.dequeueOutputBuffer(info, 10_000)
-                when {
-                    index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                        if (!endOfStream) return
+                if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                    if (!endOfStream) return
+                } else if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    track = muxer.addTrack(encoder.outputFormat)
+                    muxer.start()
+                    muxerStarted = true
+                } else if (index >= 0) {
+                    val data = encoder.getOutputBuffer(index)
+                    val isConfig = (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
+                    if (data != null && info.size > 0 && !isConfig && muxerStarted) {
+                        info.presentationTimeUs = written * 1_000_000L / fps
+                        written++
+                        data.position(info.offset)
+                        data.limit(info.offset + info.size)
+                        muxer.writeSampleData(track, data, info)
                     }
-                    index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        track = muxer.addTrack(encoder.outputFormat)
-                        muxer.start()
-                        muxerStarted = true
-                    }
-                    index >= 0 -> {
-                        val data = encoder.getOutputBuffer(index)
-                        val isConfig = (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
-                        if (data != null && info.size > 0 && !isConfig && muxerStarted) {
-                            info.presentationTimeUs = written * 1_000_000L / fps
-                            written++
-                            data.position(info.offset)
-                            data.limit(info.offset + info.size)
-                            muxer.writeSampleData(track, data, info)
-                        }
-                        encoder.releaseOutputBuffer(index, false)
-                        if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) return
-                    }
+                    encoder.releaseOutputBuffer(index, false)
+                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) return
                 }
             }
         }
@@ -94,10 +90,16 @@ object Mp4Exporter {
             }
             drain(true)
         } finally {
-            try { encoder.stop() } catch (_: Exception) {}
+            try {
+                encoder.stop()
+            } catch (ignored: Exception) {
+            }
             encoder.release()
             surface.release()
-            try { if (muxerStarted) muxer.stop() } catch (_: Exception) {}
+            try {
+                if (muxerStarted) muxer.stop()
+            } catch (ignored: Exception) {
+            }
             muxer.release()
         }
     }
