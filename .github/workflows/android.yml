@@ -3,8 +3,14 @@ name: Android Build
 on:
   push:
     branches: [main, master]
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -19,16 +25,49 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Keep the same signing key between builds
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: toon-debug-keystore-v1
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Show compile errors
+        if: failure()
+        run: |
+          grep -E "^e: " build.log | head -20 | while read -r line; do echo "::error::${line}"; done
+          {
+            echo "### Compile errors"
+            echo '```'
+            grep -E "^e: " build.log | head -20
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepare APK files
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk toon-latest.apk
+          cp app/build/outputs/apk/debug/app-debug.apk toon-build-${{ github.run_number }}.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
         with:
-          name: toon-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          tag_name: build-${{ github.run_number }}
+          name: TOON Build ${{ github.run_number }}
+          body: "Build ${{ github.run_number }} (app version 0.1.${{ github.run_number }})"
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: |
+            toon-latest.apk
+            toon-build-${{ github.run_number }}.apk
+
+      - name: Build summary
+        run: echo "Build ${{ github.run_number }} done. App version 0.1.${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
