@@ -190,5 +190,56 @@ object ShotSceneValidator {
             }
         }
         return out
+                       Text("Ripoti ya Run: ${report.executedCount} zimetekelezwa.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SceneBreakdown(
+    plan: SharedScenePlan,
+    selected: Int,
+    onSelect: (Int) -> Unit
+) {
+    val count = plan.sceneCount.toInt()
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "Scene Breakdown",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (count <= 0) {
+                Text("Hakuna scenes kwenye Scene Plan.")
+                return@Column
+            }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                for (i in 0 until count) {
+                    if (i == selected) {
+                        Button(onClick = { onSelect(i) }) { Text("Scene ${i + 1}") }
+                    } else {
+                        OutlinedButton(onClick = { onSelect(i) }) { Text("Scene ${i + 1}") }
+                    }
+                }
+            }
+            Text(
+                "Scene ${selected + 1} kati ya $count",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "Muda makadirio wa mradi: sekunde ${sec(plan.estimatedDurationSec)} " +
+                    "(${mmss(plan.estimatedDurationSec)})",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+} 
     }
 }
