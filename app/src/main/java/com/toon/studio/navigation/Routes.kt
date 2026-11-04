@@ -23,6 +23,8 @@ object Routes {
 
 data class NavItem(val route: String, val label: String)
 
+// Settings is intentionally NOT listed here: it is reachable only from
+// the gear icon in the top bar.
 val drawerItems = listOf(
     NavItem(Routes.HOME, "Home"),
     NavItem(Routes.CREATE_FILM, "Create New Film"),
@@ -35,7 +37,6 @@ val drawerItems = listOf(
     NavItem(Routes.MEDIA_LIBRARY, "Media Library"),
     NavItem(Routes.TIMELINE, "Timeline Editor"),
     NavItem(Routes.EXPORT_CENTER, "Export Center"),
-    NavItem(Routes.SETTINGS, "Settings"),
     NavItem(Routes.HELP, "Help & Support"),
     NavItem(Routes.ABOUT, "About TOON")
 )
