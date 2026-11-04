@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.toon.studio.screens.SampleVideoScreen
 import com.toon.studio.screens.ScreenContent
 import com.toon.studio.screens.screenTitle
 import kotlinx.coroutines.launch
@@ -81,7 +82,13 @@ fun AppNavigation() {
                 modifier = Modifier.padding(padding)
             ) {
                 allRoutes.forEach { route ->
-                    composable(route) { ScreenContent(route) }
+                    composable(route) {
+                        if (route == Routes.CREATE_FILM) {
+                            SampleVideoScreen()
+                        } else {
+                            ScreenContent(route)
+                        }
+                    }
                 }
             }
         }
