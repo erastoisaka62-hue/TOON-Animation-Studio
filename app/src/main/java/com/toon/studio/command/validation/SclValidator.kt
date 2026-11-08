@@ -1,3 +1,4 @@
+
 package com.toon.studio.command.validation
 
 import com.toon.studio.command.model.SclBlock
@@ -9,8 +10,9 @@ import com.toon.studio.command.model.SclValue
 import com.toon.studio.command.parser.SclParser
 
 /**
- * Lists of values the language knows about. Extend these sets when the
- * animation engines learn new actions, camera moves or expressions.
+ * Lists of values the language knows about.
+ * Extend these sets when the animation engines learn new actions,
+ * camera moves or expressions.
  */
 object SclVocabulary {
     val PROJECT_TYPES: Set<String> = setOf("2D", "3D")
@@ -35,9 +37,11 @@ object SclVocabulary {
         "DOLLY_IN", "DOLLY_OUT", "DESCEND", "ASCEND", "FOLLOW", "ORBIT", "SHAKE"
     )
 
+    // Natural, expressive and cartoon-style character movement only.
+    // ROBOTIC and STIFF have been removed.
     val MOTION_STYLES: Set<String> = setOf(
         "NATURAL", "SLOW", "FAST", "SMOOTH", "BOUNCY", "HEAVY", "LIGHT", "SNEAKY",
-        "EXAGGERATED", "CARTOONY", "ROBOTIC", "STIFF", "LOOSE"
+        "EXAGGERATED", "CARTOONY", "LOOSE"
     )
 
     val BODY_LANGUAGES: Set<String> = setOf(
@@ -58,7 +62,7 @@ object SclVocabulary {
 }
 
 /**
- * Checks an [SclDocument] and returns it with extra diagnostics added.
+ * Checks an SclDocument and returns it with extra diagnostics added.
  * Never throws. Errors block running; warnings do not.
  */
 object SclValidator {
@@ -79,7 +83,10 @@ object SclValidator {
             listOf("ID", "LOCATION", "DURATION"),
             listOf("TITLE", "TIME_OF_DAY", "DESCRIPTION")
         ),
-        SclCategory.SHOT to Rule(listOf("ID"), listOf("START", "DURATION", "DESCRIPTION")),
+        SclCategory.SHOT to Rule(
+            listOf("ID"),
+            listOf("START", "DURATION", "DESCRIPTION")
+        ),
         SclCategory.ENVIRONMENT to Rule(listOf("LOCATION"), emptyList(), true),
         SclCategory.CHARACTER to Rule(
             listOf("ID"),
@@ -87,10 +94,19 @@ object SclValidator {
         ),
         SclCategory.ACTION to Rule(
             listOf("CHARACTER", "TYPE"),
-            listOf("MOTION_STYLE", "START", "DURATION", "TARGET", "DIRECTION", "SPEED", "DESCRIPTION")
+            listOf(
+                "MOTION_STYLE", "START", "DURATION", "TARGET",
+                "DIRECTION", "SPEED", "DESCRIPTION"
+            )
         ),
-        SclCategory.MOTION_STYLE to Rule(listOf("CHARACTER", "TYPE"), listOf("START", "DURATION")),
-        SclCategory.BODY_LANGUAGE to Rule(listOf("CHARACTER", "TYPE"), listOf("START", "DURATION")),
+        SclCategory.MOTION_STYLE to Rule(
+            listOf("CHARACTER", "TYPE"),
+            listOf("START", "DURATION")
+        ),
+        SclCategory.BODY_LANGUAGE to Rule(
+            listOf("CHARACTER", "TYPE"),
+            listOf("START", "DURATION")
+        ),
         SclCategory.EXPRESSION to Rule(
             listOf("CHARACTER", "TYPE"),
             listOf("START", "DURATION", "INTENSITY")
@@ -126,34 +142,60 @@ object SclValidator {
             listOf("TYPE"),
             listOf("START", "DURATION", "FROM", "TO")
         ),
-        SclCategory.TIMELINE to Rule(emptyList(), listOf("TOTAL_DURATION", "FPS")),
-        SclCategory.RENDER to Rule(emptyList(), listOf("QUALITY", "FPS", "RESOLUTION", "ENGINE")),
-        SclCategory.EXPORT to Rule(emptyList(), listOf("FORMAT", "FILE_NAME", "DESTINATION"))
+        SclCategory.TIMELINE to Rule(
+            emptyList(),
+            listOf("TOTAL_DURATION", "FPS")
+        ),
+        SclCategory.RENDER to Rule(
+            emptyList(),
+            listOf("QUALITY", "FPS", "RESOLUTION", "ENGINE")
+        ),
+        SclCategory.EXPORT to Rule(
+            emptyList(),
+            listOf("FORMAT", "FILE_NAME", "DESTINATION")
+        )
     )
 
     /** Commands that only make sense inside a scene. */
     private val SCENE_REQUIRED: Set<SclCategory> = setOf(
-        SclCategory.SHOT, SclCategory.ACTION, SclCategory.MOTION_STYLE,
-        SclCategory.BODY_LANGUAGE, SclCategory.EXPRESSION, SclCategory.DIALOGUE,
+        SclCategory.SHOT,
+        SclCategory.ACTION,
+        SclCategory.MOTION_STYLE,
+        SclCategory.BODY_LANGUAGE,
+        SclCategory.EXPRESSION,
+        SclCategory.DIALOGUE,
         SclCategory.CAMERA
     )
 
     /** Commands whose START/DURATION are measured inside the current scene. */
     private val TIMED: Set<SclCategory> = setOf(
-        SclCategory.SHOT, SclCategory.ACTION, SclCategory.MOTION_STYLE,
-        SclCategory.BODY_LANGUAGE, SclCategory.EXPRESSION, SclCategory.DIALOGUE,
-        SclCategory.CAMERA, SclCategory.LIGHTING, SclCategory.SOUND, SclCategory.MUSIC,
-        SclCategory.TRANSITION, SclCategory.VFX
+        SclCategory.SHOT,
+        SclCategory.ACTION,
+        SclCategory.MOTION_STYLE,
+        SclCategory.BODY_LANGUAGE,
+        SclCategory.EXPRESSION,
+        SclCategory.DIALOGUE,
+        SclCategory.CAMERA,
+        SclCategory.LIGHTING,
+        SclCategory.SOUND,
+        SclCategory.MUSIC,
+        SclCategory.TRANSITION,
+        SclCategory.VFX
     )
 
     /** Commands that point to a CHARACTER by ID. */
     private val CHARACTER_REF: Set<SclCategory> = setOf(
-        SclCategory.ACTION, SclCategory.MOTION_STYLE, SclCategory.BODY_LANGUAGE,
-        SclCategory.EXPRESSION, SclCategory.DIALOGUE, SclCategory.VOICE
+        SclCategory.ACTION,
+        SclCategory.MOTION_STYLE,
+        SclCategory.BODY_LANGUAGE,
+        SclCategory.EXPRESSION,
+        SclCategory.DIALOGUE,
+        SclCategory.VOICE
     )
 
     /** Parse then validate in one call. */
-    fun validateSource(source: String): SclDocument = validate(SclParser.parse(source))
+    fun validateSource(source: String): SclDocument =
+        validate(SclParser.parse(source))
 
     fun validate(doc: SclDocument): SclDocument {
         val out = ArrayList<SclDiagnostic>()
@@ -164,61 +206,115 @@ object SclValidator {
         val scenes = HashMap<String, Int>()
         val shots = HashMap<String, Int>()
 
-        // Pass 1: field checks and collect declared IDs (so order does not matter).
+        // Pass 1: field checks and collect declared IDs.
+        // Declaration order does not matter.
         for (b in doc.blocks) {
             checkFields(b, out)
             checkNumbers(b, out)
             checkValues(b, out)
+
             when (b.category) {
-                SclCategory.CHARACTER -> declare(b, "ID", characters, "Character", out)
-                SclCategory.SCENE -> declare(b, "ID", scenes, "Scene", out)
-                SclCategory.SHOT -> declare(b, "ID", shots, "Shot", out)
+                SclCategory.CHARACTER ->
+                    declare(b, "ID", characters, "Character", out)
+
+                SclCategory.SCENE ->
+                    declare(b, "ID", scenes, "Scene", out)
+
+                SclCategory.SHOT ->
+                    declare(b, "ID", shots, "Shot", out)
+
                 SclCategory.ENVIRONMENT -> {
                     val loc = b.text("LOCATION")?.trim()
-                    if (loc != null && loc.isNotEmpty() && !locations.containsKey(loc.uppercase())) {
+                    if (
+                        loc != null &&
+                        loc.isNotEmpty() &&
+                        !locations.containsKey(loc.uppercase())
+                    ) {
                         locations[loc.uppercase()] = b.lineOf("LOCATION")
                     }
                 }
-                else -> {}
+
+                else -> Unit
             }
         }
 
         val projects = doc.blocksOf(SclCategory.PROJECT)
+
         if (projects.isEmpty()) {
-            err(out, 0, "NO_PROJECT", "PROJECT haipo. Anza na PROJECT { NAME: \"...\" TYPE: \"2D\" }.")
+            err(
+                out,
+                0,
+                "NO_PROJECT",
+                "PROJECT haipo. Anza na PROJECT { NAME: \"...\" TYPE: \"2D\" }."
+            )
         }
+
         for (i in 1 until projects.size) {
-            err(out, projects[i].startLine, "DUPLICATE_PROJECT", "PROJECT moja tu inaruhusiwa kwa kila faili.")
+            err(
+                out,
+                projects[i].startLine,
+                "DUPLICATE_PROJECT",
+                "PROJECT moja tu inaruhusiwa kwa kila faili."
+            )
         }
+
         if (doc.blocksOf(SclCategory.SCENE).isEmpty()) {
-            warn(out, 0, "NO_SCENE", "Hakuna SCENE; Scene Plan haitakuwa na cha kuandaa.")
+            warn(
+                out,
+                0,
+                "NO_SCENE",
+                "Hakuna SCENE; Scene Plan haitakuwa na cha kuandaa."
+            )
         }
 
         // Pass 2: references and timing, scene by scene.
         var inScene = false
         var sceneDuration: Double? = null
+
         for (b in doc.blocks) {
             if (b.category == SclCategory.SCENE) {
                 inScene = true
                 sceneDuration = b.number("DURATION")
+
                 val loc = b.text("LOCATION")?.trim()
-                if (loc != null && loc.isNotEmpty() && !locations.containsKey(loc.uppercase())) {
+
+                if (
+                    loc != null &&
+                    loc.isNotEmpty() &&
+                    !locations.containsKey(loc.uppercase())
+                ) {
                     err(
-                        out, b.lineOf("LOCATION"), "UNKNOWN_LOCATION",
-                        "Location '$loc' haijatangazwa. Ongeza ENVIRONMENT { LOCATION: \"$loc\" }."
+                        out,
+                        b.lineOf("LOCATION"),
+                        "UNKNOWN_LOCATION",
+                        "Location '$loc' haijatangazwa. " +
+                            "Ongeza ENVIRONMENT { LOCATION: \"$loc\" }."
                     )
                 }
+
                 continue
             }
+
             if (SCENE_REQUIRED.contains(b.category) && !inScene) {
                 err(
-                    out, b.startLine, "OUTSIDE_SCENE",
+                    out,
+                    b.startLine,
+                    "OUTSIDE_SCENE",
                     "${b.category.name} lazima iandikwe baada ya SCENE { ... } inayohusika."
                 )
             }
-            if (CHARACTER_REF.contains(b.category)) checkCharacterRef(b, characters, out)
-            if (b.category == SclCategory.CAMERA) checkCamera(b, characters, locations, out)
-            if (inScene && TIMED.contains(b.category)) checkTiming(b, sceneDuration, out)
+
+            if (CHARACTER_REF.contains(b.category)) {
+                checkCharacterRef(b, characters, out)
+            }
+
+            if (b.category == SclCategory.CAMERA) {
+                checkCamera(b, characters, locations, out)
+            }
+
+            if (inScene && TIMED.contains(b.category)) {
+                checkTiming(b, sceneDuration, out)
+            }
         }
 
         return SclDocument(doc.blocks, out.sortedBy { it.line })
@@ -226,15 +322,30 @@ object SclValidator {
 
     // ---------- helpers ----------
 
-    private fun err(out: MutableList<SclDiagnostic>, line: Int, code: String, message: String) {
+    private fun err(
+        out: MutableList<SclDiagnostic>,
+        line: Int,
+        code: String,
+        message: String
+    ) {
         out.add(SclDiagnostic(SclSeverity.ERROR, message, line, code))
     }
 
-    private fun warn(out: MutableList<SclDiagnostic>, line: Int, code: String, message: String) {
+    private fun warn(
+        out: MutableList<SclDiagnostic>,
+        line: Int,
+        code: String,
+        message: String
+    ) {
         out.add(SclDiagnostic(SclSeverity.WARNING, message, line, code))
     }
 
-    private fun num(d: Double): String = if (d == d.toLong().toDouble()) d.toLong().toString() else d.toString()
+    private fun num(d: Double): String =
+        if (d == d.toLong().toDouble()) {
+            d.toLong().toString()
+        } else {
+            d.toString()
+        }
 
     private fun declare(
         b: SclBlock,
@@ -245,55 +356,112 @@ object SclValidator {
     ) {
         val id = b.text(key)?.trim() ?: return
         if (id.isEmpty()) return
+
         val k = id.uppercase()
         val first = into[k]
+
         if (first != null) {
             err(
-                out, b.lineOf(key), "DUPLICATE_ID",
-                "$label '$id' imetangazwa tena (mara ya kwanza ni mstari $first). IDs lazima ziwe za kipekee."
+                out,
+                b.lineOf(key),
+                "DUPLICATE_ID",
+                "$label '$id' imetangazwa tena (mara ya kwanza ni mstari $first). " +
+                    "IDs lazima ziwe za kipekee."
             )
         } else {
             into[k] = b.lineOf(key)
         }
     }
 
-    private fun checkFields(b: SclBlock, out: MutableList<SclDiagnostic>) {
+    private fun checkFields(
+        b: SclBlock,
+        out: MutableList<SclDiagnostic>
+    ) {
         val rule = RULES[b.category] ?: return
         val name = b.category.name
+
         for (req in rule.required) {
             if (!b.has(req)) {
-                err(out, b.startLine, "MISSING_FIELD", "$name inahitaji field '$req'.")
+                err(
+                    out,
+                    b.startLine,
+                    "MISSING_FIELD",
+                    "$name inahitaji field '$req'."
+                )
             } else {
                 val t = b.text(req)
+
                 if (t != null && t.isBlank()) {
-                    err(out, b.lineOf(req), "EMPTY_FIELD", "Field '$req' ndani ya $name haina maandishi.")
+                    err(
+                        out,
+                        b.lineOf(req),
+                        "EMPTY_FIELD",
+                        "Field '$req' ndani ya $name haina maandishi."
+                    )
                 }
             }
         }
+
         if (!rule.open) {
             for (f in b.fields) {
-                if (!rule.required.contains(f.key) && !rule.optional.contains(f.key)) {
-                    warn(out, f.line, "UNKNOWN_FIELD", "Field '${f.key}' haitambuliki ndani ya $name; itapuuzwa.")
+                if (
+                    !rule.required.contains(f.key) &&
+                    !rule.optional.contains(f.key)
+                ) {
+                    warn(
+                        out,
+                        f.line,
+                        "UNKNOWN_FIELD",
+                        "Field '${f.key}' haitambuliki ndani ya $name; itapuuzwa."
+                    )
                 }
             }
         }
     }
 
-    private fun checkNumbers(b: SclBlock, out: MutableList<SclDiagnostic>) {
+    private fun checkNumbers(
+        b: SclBlock,
+        out: MutableList<SclDiagnostic>
+    ) {
         for (f in b.fields) {
-            val positive = f.key == "DURATION" || f.key == "TOTAL_DURATION" || f.key == "FPS"
+            val positive =
+                f.key == "DURATION" ||
+                f.key == "TOTAL_DURATION" ||
+                f.key == "FPS"
+
             val nonNegative = f.key == "START"
+
             if (!positive && !nonNegative) continue
+
             val v = f.value
+
             if (v !is SclValue.Num) {
-                err(out, f.line, "NOT_A_NUMBER", "'${f.key}' lazima iwe namba (mfano 5 au 2.5), lakini umeandika '${v.raw}'.")
+                err(
+                    out,
+                    f.line,
+                    "NOT_A_NUMBER",
+                    "'${f.key}' lazima iwe namba (mfano 5 au 2.5), " +
+                        "lakini umeandika '${v.raw}'."
+                )
                 continue
             }
+
             if (positive && v.value <= 0.0) {
-                err(out, f.line, "BAD_NUMBER", "'${f.key}' lazima iwe kubwa kuliko 0.")
+                err(
+                    out,
+                    f.line,
+                    "BAD_NUMBER",
+                    "'${f.key}' lazima iwe kubwa kuliko 0."
+                )
             }
+
             if (nonNegative && v.value < 0.0) {
-                err(out, f.line, "BAD_NUMBER", "'START' haiwezi kuwa hasi.")
+                err(
+                    out,
+                    f.line,
+                    "BAD_NUMBER",
+                    "'START' haiwezi kuwa hasi."
+                )
             }
         }
     }
@@ -306,35 +474,68 @@ object SclValidator {
         out: MutableList<SclDiagnostic>
     ) {
         val value = b.text(key)?.trim() ?: return
-        if (value.isEmpty() || allowed.contains(value.uppercase())) return
-        val msg = "Thamani '$value' ya $key ndani ya ${b.category.name} haitambuliki. " +
-            "Zinazotambulika: ${allowed.joinToString(", ")}."
-        if (isError) err(out, b.lineOf(key), "UNKNOWN_VALUE", msg)
-        else warn(out, b.lineOf(key), "UNKNOWN_VALUE", msg)
+
+        if (value.isEmpty() || allowed.contains(value.uppercase())) {
+            return
+        }
+
+        val msg =
+            "Thamani '$value' ya $key ndani ya ${b.category.name} haitambuliki. " +
+                "Zinazotambulika: ${allowed.joinToString(", ")}."
+
+        if (isError) {
+            err(out, b.lineOf(key), "UNKNOWN_VALUE", msg)
+        } else {
+            warn(out, b.lineOf(key), "UNKNOWN_VALUE", msg)
+        }
     }
 
-    private fun checkValues(b: SclBlock, out: MutableList<SclDiagnostic>) {
+    private fun checkValues(
+        b: SclBlock,
+        out: MutableList<SclDiagnostic>
+    ) {
         when (b.category) {
             SclCategory.PROJECT -> {
                 enumCheck(b, "TYPE", SclVocabulary.PROJECT_TYPES, true, out)
                 enumCheck(b, "FORMAT", SclVocabulary.FORMATS, true, out)
                 enumCheck(b, "LANGUAGE", SclVocabulary.LANGUAGES, false, out)
             }
-            SclCategory.STORY -> enumCheck(b, "LANGUAGE", SclVocabulary.LANGUAGES, false, out)
+
+            SclCategory.STORY -> {
+                enumCheck(b, "LANGUAGE", SclVocabulary.LANGUAGES, false, out)
+            }
+
             SclCategory.ACTION -> {
                 enumCheck(b, "TYPE", SclVocabulary.ACTIONS, true, out)
                 enumCheck(b, "MOTION_STYLE", SclVocabulary.MOTION_STYLES, false, out)
             }
-            SclCategory.MOTION_STYLE -> enumCheck(b, "TYPE", SclVocabulary.MOTION_STYLES, false, out)
-            SclCategory.BODY_LANGUAGE -> enumCheck(b, "TYPE", SclVocabulary.BODY_LANGUAGES, false, out)
-            SclCategory.EXPRESSION -> enumCheck(b, "TYPE", SclVocabulary.EXPRESSIONS, false, out)
+
+            SclCategory.MOTION_STYLE -> {
+                enumCheck(b, "TYPE", SclVocabulary.MOTION_STYLES, false, out)
+            }
+
+            SclCategory.BODY_LANGUAGE -> {
+                enumCheck(b, "TYPE", SclVocabulary.BODY_LANGUAGES, false, out)
+            }
+
+            SclCategory.EXPRESSION -> {
+                enumCheck(b, "TYPE", SclVocabulary.EXPRESSIONS, false, out)
+            }
+
             SclCategory.CAMERA -> {
                 enumCheck(b, "TYPE", SclVocabulary.CAMERA_TYPES, true, out)
                 enumCheck(b, "MOVEMENT", SclVocabulary.CAMERA_MOVEMENTS, true, out)
             }
-            SclCategory.TRANSITION -> enumCheck(b, "TYPE", SclVocabulary.TRANSITIONS, false, out)
-            SclCategory.EXPORT -> enumCheck(b, "FORMAT", SclVocabulary.EXPORT_FORMATS, false, out)
-            else -> {}
+
+            SclCategory.TRANSITION -> {
+                enumCheck(b, "TYPE", SclVocabulary.TRANSITIONS, false, out)
+            }
+
+            SclCategory.EXPORT -> {
+                enumCheck(b, "FORMAT", SclVocabulary.EXPORT_FORMATS, false, out)
+            }
+
+            else -> Unit
         }
     }
 
@@ -344,15 +545,23 @@ object SclValidator {
         out: MutableList<SclDiagnostic>
     ) {
         val ref = b.text("CHARACTER")?.trim() ?: return
-        if (ref.isEmpty() || characters.containsKey(ref.uppercase())) return
+
+        if (ref.isEmpty() || characters.containsKey(ref.uppercase())) {
+            return
+        }
+
         val known = if (characters.isEmpty()) {
             "Hakuna CHARACTER iliyotangazwa bado."
         } else {
             "IDs zilizopo: ${characters.keys.sorted().joinToString(", ")}."
         }
+
         err(
-            out, b.lineOf("CHARACTER"), "UNKNOWN_CHARACTER",
-            "Character '$ref' haijatangazwa. Ongeza CHARACTER { ID: \"$ref\" } au tumia ID iliyopo. $known"
+            out,
+            b.lineOf("CHARACTER"),
+            "UNKNOWN_CHARACTER",
+            "Character '$ref' haijatangazwa. " +
+                "Ongeza CHARACTER { ID: \"$ref\" } au tumia ID iliyopo. $known"
         )
     }
 
@@ -365,40 +574,57 @@ object SclValidator {
         val type = b.text("TYPE")?.trim()?.uppercase() ?: ""
         val move = b.text("MOVEMENT")?.trim()?.uppercase() ?: ""
         val target = b.text("TARGET")?.trim() ?: ""
+
         if (target.isEmpty()) {
             if (type == "TRACKING") {
-                err(out, b.startLine, "CAMERA_NEEDS_TARGET", "Camera ya TRACKING inahitaji TARGET (character au location).")
+                err(
+                    out,
+                    b.startLine,
+                    "CAMERA_NEEDS_TARGET",
+                    "Camera ya TRACKING inahitaji TARGET (character au location)."
+                )
             } else if (move == "FOLLOW" || move == "ORBIT") {
-                err(out, b.startLine, "CAMERA_NEEDS_TARGET", "MOVEMENT $move inahitaji TARGET (character au location).")
+                err(
+                    out,
+                    b.startLine,
+                    "CAMERA_NEEDS_TARGET",
+                    "MOVEMENT $move inahitaji TARGET (character au location)."
+                )
             }
-        } else if (!characters.containsKey(target.uppercase()) && !locations.containsKey(target.uppercase())) {
+        } else if (
+            !characters.containsKey(target.uppercase()) &&
+            !locations.containsKey(target.uppercase())
+        ) {
             err(
-                out, b.lineOf("TARGET"), "UNKNOWN_TARGET",
+                out,
+                b.lineOf("TARGET"),
+                "UNKNOWN_TARGET",
                 "TARGET '$target' si character wala location iliyotangazwa."
             )
         }
     }
 
-    private fun checkTiming(b: SclBlock, sceneDuration: Double?, out: MutableList<SclDiagnostic>) {
+    private fun checkTiming(
+        b: SclBlock,
+        sceneDuration: Double?,
+        out: MutableList<SclDiagnostic>
+    ) {
         if (sceneDuration == null || sceneDuration <= 0.0) return
+
         val start = b.number("START")
         val dur = b.number("DURATION")
         val name = b.category.name
+
         if (start != null && start >= 0.0 && start >= sceneDuration) {
             err(
-                out, b.lineOf("START"), "START_OUT_OF_SCENE",
-                "$name: START (${num(start)}) iko nje ya scene inayodumu sekunde ${num(sceneDuration)}."
+                out,
+                b.lineOf("START"),
+                "START_OUT_OF_SCENE",
+                "$name: START (${num(start)}) iko nje ya scene inayodumu " +
+                    "sekunde ${num(sceneDuration)}."
             )
             return
         }
+
         if (dur != null && dur > 0.0) {
-            val s = if (start != null && start >= 0.0) start else 0.0
-            if (s + dur > sceneDuration + 0.0001) {
-                warn(
-                    out, b.lineOf("DURATION"), "ENDS_AFTER_SCENE",
-                    "$name inaisha sekunde ${num(s + dur)}, baada ya mwisho wa scene (sekunde ${num(sceneDuration)})."
-                )
-            }
-        }
-    }
-}
+            val s = if (start != null 
